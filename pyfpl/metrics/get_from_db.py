@@ -16,14 +16,15 @@ class GetFromDb():
         self.engine = engine
 
         with engine.connect() as conn:
-            self.df = pd.read_sql_table(self.table, conn, schema='data')
+            self.df = pd.read_sql_table(self.table, conn, index_col=self.right_id,
+                                        schema='data')
 
     def __str__(self):
         return 'GetFromDb'
 
     def calc(self, df):
         df = df.merge(self.df, how='left',
-                      right_on=self.right_id, left_on=self.left_id)
+                      right_index=True, left_on=self.left_id)
         return df
 
 

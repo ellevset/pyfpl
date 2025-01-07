@@ -5,14 +5,16 @@ Extract data from database
 
 import pandas as pd
 
-class MergeWithDf():
+class MergeWithDf:
     def __init__(self, df, left_on, right_on, *args, **kwargs):
         """
 
         """
-        self.df = df
         self.left_on = left_on
         self.right_on = right_on
+
+        self.df = df.set_index(self.right_on)
+
 
 
     def __str__(self):

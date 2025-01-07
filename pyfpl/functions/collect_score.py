@@ -7,6 +7,9 @@ import sys
 import logging
 import importlib
 
+from sqlalchemy import MetaData
+from sqlalchemy import Table
+
 from pyfpl.dbutils import get_engine
 from pyfpl.scrapers.FantasyPremierLeague import Score, Teams
 
@@ -22,6 +25,10 @@ def main(*args, **kwargs):
     df_teams = Teams().fetch()
     df_teams = df_teams[['id', 'short_name']].rename(columns={'id': 'fpl_team_id'})
 
+    # Get a reflection of the matches table to check for new objects
+    metadata = MetaData(engine)
+    matches = Table('matches', metadata, autoload=True, schema='data')
+
     # Fetch fixture data
     p = Score()
     df = p.fetch()
@@ -31,15 +38,20 @@ def main(*args, **kwargs):
     #df = df.merge(df_teams.rename(columns={'short_name': 'shortname_a'}),
     #              left_on='team_a', right_on='id')
 
-    my_metrics = [('rename_columns', {'name': 'id', 'new_name': 'fixture_id'}),
+    my_metrics = [('filter_on_column', {'column': 'finished', 'value': True}),
+                  ('rename_columns', {'name': 'id', 'new_name': 'fixture_id'}),
                   ('merge_with_df', {'df': df_teams, 'left_on': 'team_h', 'right_on': 'fpl_team_id'}),
-                  ('rename_columns', {'name': 'short_name', 'new_name': 'shortname_h'}),
+                  ('rename_columns', {'short_name': 'shortname_h', 'id': 'team_home'}),
                   ('get_from_db', {'table': 'teams', 'engine': engine,
                                    'left_id': 'shortname_h', 'right_id': 'short_name'}),
                   ('merge_with_df', {'df': df_teams, 'left_on': 'team_a', 'right_on': 'fpl_team_id'}),
-                  ('rename_columns', {'name': 'short_name', 'new_name': 'shortname_a'}),
+                  ('rename_columns', {'short_name': 'shortname_a', 'id': 'team_away'}),
                   ('get_from_db', {'table': 'teams', 'engine': engine,
                                    'left_id': 'shortname_a', 'right_id': 'short_name'}),
+                  ('add_column_value', {'column': 'league_id', 'value': 1, 'dtype': int}),
+                  ('add_column_value', {'column': 'season', 'value': '2024/2025'}),
+                  ('exists_in_db', {'table': matches, 'engine': engine,
+                                    'columns': ['league_id', 'season', 'team_home']})
                   ]
     metrics_to_run = []
     for m in my_metrics:
